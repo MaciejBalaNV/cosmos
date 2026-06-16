@@ -1,7 +1,8 @@
 # Cosmos3 Generator Transfer Examples
 
-Cosmos3-Nano video **transfer** examples on the native PyTorch (Cosmos Framework) path.
-Sample assets under [`assets/`](./assets) cover spatial control signals paired with
+Cosmos3-Nano video **transfer** examples for the native PyTorch (Cosmos
+Framework) path and the OpenAI-compatible vLLM-Omni server path. Sample assets
+under [`assets/`](./assets) cover spatial control signals paired with
 `prompt.json` files:
 
 - **Edge (Canny)** — edge map control plus caption.
@@ -10,18 +11,20 @@ Sample assets under [`assets/`](./assets) cover spatial control signals paired w
 - **Segmentation** — segmentation map control plus caption.
 - **World scenario (WSM)** — world-scenario map control plus caption.
 
-vLLM-Omni does not expose transfer controls today.
-
 Environment setup is centralized in the shared
 [Cosmos3 cookbooks environment setup](../../README.md) guide.
 
 ## Transfer Definition
 
-Video transfer generates a target clip from a `prompt.json` caption and a precomputed
-control video on the hint block (`control_path`). Inference uses `model_mode` `video2video`;
-there is no `vision_path` or source RGB video at run time. Output frame count and geometry
-come from the control video; see the spec field reference for how `fps` and
-`aspect_ratio` are resolved. All examples share
+Video transfer generates a target clip from a `prompt.json` caption and a
+precomputed control video on a hint block (`control_path`). The Framework path
+uses `model_mode` `video2video` in a local JSON spec. The vLLM-Omni path uses
+`POST /v1/videos/sync` and passes the same hint key (`edge`, `blur`, `depth`,
+`seg`, or `wsm`) inside `extra_params`.
+
+There is no source RGB video at run time for the checked-in transfer examples.
+Output frame count and geometry come from the control video; see the spec field
+reference for how `fps` and `aspect_ratio` are resolved. All examples share
 `assets/negative_prompt.json` for the negative caption.
 
 | Control | Asset folder | Inference input | Generation duration |
@@ -32,7 +35,8 @@ come from the control video; see the spec field reference for how `fps` and
 | Segmentation | `assets/seg/` | `control_seg.mp4` + `prompt.json` | 121 frames @ 30 FPS |
 | World scenario (WSM) | `assets/wsm/` | `control_wsm.mp4` + `prompt.json` | 101 frames @ 10 FPS |
 
-Transfer inference is selected automatically when any hint key is present in the spec.
+Transfer inference is selected automatically when any hint key is present in the
+Framework spec or in vLLM-Omni `extra_params`.
 
 ## Run with Cosmos Framework
 
@@ -97,6 +101,74 @@ checked-in assets under [`assets/`](./assets) via paths relative to [`specs/`](.
 Outputs are written under the directory passed to `-o`, with one subdirectory per sample name,
 for example `output/transfer_edge/vision.mp4`. Batch size must be 1 for transfer.
 
+## Run with vLLM-Omni
+
+### Quickstart
+
+Set up the environment and start the server:
+[vLLM-Omni setup](../../README.md#vllm-omni) (Docker recommended). Run the
+Docker command from the `cosmos` repo root so the repo is mounted at
+`/workspace` and the server runs from that directory inside the container:
+
+```bash
+export COSMOS3_WORKDIR="$(pwd)"
+export COSMOS3_HOST_PORT=8000
+```
+
+The transfer examples send repo-local `control_path` strings to the server. For
+Docker, those paths must be visible from the server working directory. With the
+shared Docker setup, the checked-in depth control video is:
+
+```text
+cookbooks/cosmos3/generator/transfer/assets/depth/control_depth.mp4
+```
+
+If your server does not run from the repo root, start it from the repo root or
+adjust `control_path` to a path the server process can read.
+
+Send a depth-transfer request:
+
+```python
+import json
+from pathlib import Path
+
+import requests
+
+transfer_root = Path("cookbooks/cosmos3/generator/transfer")
+prompt = json.dumps(json.load(open(transfer_root / "assets/depth/prompt.json")))
+negative = json.dumps(json.load(open(transfer_root / "assets/negative_prompt.json")))
+control_path = transfer_root / "assets/depth/control_depth.mp4"
+
+response = requests.post(
+    "http://localhost:8000/v1/videos/sync",
+    data={
+        "prompt": prompt,
+        "negative_prompt": negative,
+        "size": "1280x720",
+        "num_frames": "121",
+        "fps": "30",
+        "num_inference_steps": "50",
+        "guidance_scale": "3.0",
+        "flow_shift": "10.0",
+        "seed": "2026",
+        "extra_params": json.dumps(
+            {
+                "use_resolution_template": False,
+                "use_duration_template": False,
+                "guardrails": True,
+                "depth": {"control_path": control_path.as_posix()},
+                "control_guidance": 1.5,
+                "num_video_frames_per_chunk": 121,
+                "max_frames": 121,
+            }
+        ),
+    },
+    headers={"Accept": "video/mp4"},
+)
+response.raise_for_status()
+Path("/tmp/cosmos3_transfer_depth.mp4").write_bytes(response.content)
+```
+
 ### Spec field reference
 
 A representative spec (`specs/edge.json`):
@@ -140,6 +212,9 @@ Key fields:
 - [`run_video_transfer_with_cosmos_framework.ipynb`](./run_video_transfer_with_cosmos_framework.ipynb) —
   full tutorial on a **GPU host**: environment setup, `nvidia-smi` check, then five inference blocks
   (edge, blur, depth, seg, wsm) with previews. See [Cosmos3 environment setup](../../README.md).
+- [`run_video_transfer_with_vllm_omni.ipynb`](./run_video_transfer_with_vllm_omni.ipynb) —
+  full tutorial against an already-running vLLM-Omni server: endpoint checks, repo-local
+  control paths, five transfer requests, and compact previews.
 - [`specs/`](./specs) — checked-in Framework input JSON per control (paths relative to `specs/`).
 
 ### Troubleshooting
