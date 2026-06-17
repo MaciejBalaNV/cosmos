@@ -439,7 +439,117 @@ References:
 </details>
 
 #### Reasoner with Transformers
-Coming soon!
+
+<details>
+<summary>Use Transformers for local Reasoner inference from Python.</summary>
+
+Use Hugging Face Transformers for Python-first Reasoner inference. This path
+loads only the Reasoner tower from the unified `nvidia/Cosmos3-Nano` or
+`nvidia/Cosmos3-Super` checkpoint and returns text from text, image, or video
+inputs. It does not load the Generator diffusion, audio, or action heads; use
+[Generator with Diffusers](#generator-with-diffusers) or
+[Generator with vLLM-Omni](#generator-with-vllm-omni) for non-text outputs.
+
+Cosmos3 support first appears in the Transformers `v5.11.0` release tag. Install
+Transformers `5.11.0` or newer:
+
+```shell
+uv venv --python 3.13 --seed --managed-python
+source .venv/bin/activate
+uv pip install --torch-backend=auto \
+  accelerate \
+  av \
+  pillow \
+  "safetensors>=0.8.0" \
+  torch \
+  torchvision \
+  "transformers>=5.11.0"
+```
+
+`--torch-backend=auto` lets uv pick a CUDA build that matches your driver. Pin
+an explicit backend instead if needed, for example `--torch-backend=cu128` for a
+CUDA 12.8 driver.
+
+Run an image reasoning request:
+
+```python
+from pathlib import Path
+
+import torch
+from transformers import AutoProcessor, Cosmos3OmniForConditionalGeneration
+
+model_id = "nvidia/Cosmos3-Nano"
+image_path = Path("cookbooks/cosmos3/reasoner/assets/robot_153.jpg").resolve()
+
+processor = AutoProcessor.from_pretrained(model_id)
+model = Cosmos3OmniForConditionalGeneration.from_pretrained(
+    model_id,
+    dtype=torch.bfloat16,
+    device_map="auto",
+)
+
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "image", "path": str(image_path)},
+            {"type": "text", "text": "Caption the image in detail."},
+        ],
+    }
+]
+
+inputs = processor.apply_chat_template(
+    messages,
+    tokenize=True,
+    add_generation_prompt=True,
+    return_dict=True,
+    return_tensors="pt",
+).to(model.device, torch.bfloat16)
+
+generated_ids = model.generate(**inputs, do_sample=False, max_new_tokens=512)
+generated_ids_trimmed = [
+    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+]
+output = processor.batch_decode(
+    generated_ids_trimmed,
+    skip_special_tokens=True,
+    clean_up_tokenization_spaces=False,
+)
+print(output[0])
+```
+
+For video reasoning, use a video content block and pass a frame sampling rate to
+`apply_chat_template`:
+
+```python
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "video", "path": "cookbooks/cosmos3/reasoner/assets/video_caption.mp4"},
+            {"type": "text", "text": "Describe the notable events in this video."},
+        ],
+    }
+]
+
+inputs = processor.apply_chat_template(
+    messages,
+    fps=2,
+    tokenize=True,
+    add_generation_prompt=True,
+    return_dict=True,
+    return_tensors="pt",
+).to(model.device, torch.bfloat16)
+```
+
+Then reuse the `model.generate` and `batch_decode` block from the image example.
+
+For `nvidia/Cosmos3-Super`, change `model_id` to `nvidia/Cosmos3-Super`.
+`device_map="auto"` can shard the model across multiple GPUs when Accelerate is
+installed. For an OpenAI-compatible server, use
+[Reasoner with vLLM](#reasoner-with-vllm) or [Reasoner with NIM](#reasoner-with-nim).
+
+</details>
 
 #### Reasoner with vLLM
 
@@ -620,7 +730,7 @@ The Cosmos Framework requires `uv >= 0.11.3` (enforced via its `pyproject.toml`)
 | --- | --- | --- |
 | Generator research or model development | Diffusers | Python-first path for inspecting and modifying generator behavior |
 | Generator production inference | vLLM-Omni | API path for image, video, sound, and action outputs |
-| Reasoner research or model development | Transformers (coming soon) | Python-first path for prompts, processors, and model behavior |
+| Reasoner research or model development | Transformers | Python-first path for prompts, processors, and model behavior |
 | Reasoner production inference | vLLM | OpenAI-compatible endpoint for text outputs from text and vision inputs |
 | Reasoner turnkey deployment | NIM | Prebuilt, optimized OpenAI-compatible container — no vLLM/CUDA setup |
 | Runnable setup, training, or evaluation | Cosmos Framework | Full workflow docs for setup, inference, omni-model training, and evaluation |

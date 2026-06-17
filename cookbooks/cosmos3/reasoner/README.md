@@ -184,5 +184,91 @@ assets are sent as base64 data URIs; video frame sampling is controlled with
 
 ## Run with Transformers
 
-Support for Transformers-based Reasoner inference is coming soon — see
-[Transformers setup](../README.md#transformers-coming-soon).
+### Quickstart
+
+Set up the environment: [Transformers setup](../README.md#transformers). This
+installs a Transformers release with the Cosmos3 integration.
+
+Run **Cosmos3-Nano** Reasoner inference in process:
+
+```python
+from pathlib import Path
+
+import torch
+from transformers import AutoProcessor, Cosmos3OmniForConditionalGeneration
+
+model_id = "nvidia/Cosmos3-Nano"
+image_path = Path("assets/robot_153.jpg").resolve()
+
+processor = AutoProcessor.from_pretrained(model_id)
+model = Cosmos3OmniForConditionalGeneration.from_pretrained(
+    model_id,
+    dtype=torch.bfloat16,
+    device_map="auto",
+)
+
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "image", "path": str(image_path)},
+            {"type": "text", "text": "Caption the image in detail."},
+        ],
+    }
+]
+
+inputs = processor.apply_chat_template(
+    messages,
+    tokenize=True,
+    add_generation_prompt=True,
+    return_dict=True,
+    return_tensors="pt",
+).to(model.device, torch.bfloat16)
+
+generated_ids = model.generate(**inputs, do_sample=False, max_new_tokens=512)
+generated_ids_trimmed = [
+    out_ids[len(in_ids) :] for in_ids, out_ids in zip(inputs.input_ids, generated_ids)
+]
+output = processor.batch_decode(
+    generated_ids_trimmed,
+    skip_special_tokens=True,
+    clean_up_tokenization_spaces=False,
+)
+print(output[0])
+```
+
+The Transformers integration loads only the Reasoner tower from the unified
+checkpoint and drops Generator, audio, and action parameters. It returns text for
+text, image, and video understanding tasks; it does not generate images, videos,
+audio, or actions.
+
+For video inputs, use a `video` content block and pass a sampling rate to
+`apply_chat_template`:
+
+```python
+messages = [
+    {
+        "role": "user",
+        "content": [
+            {"type": "video", "path": "assets/video_caption.mp4"},
+            {"type": "text", "text": "Describe the notable events in this video."},
+        ],
+    }
+]
+
+inputs = processor.apply_chat_template(
+    messages,
+    fps=2,
+    tokenize=True,
+    add_generation_prompt=True,
+    return_dict=True,
+    return_tensors="pt",
+).to(model.device, torch.bfloat16)
+```
+
+Then reuse the `model.generate` and `batch_decode` block from the image example.
+
+To run **Cosmos3-Super**, change `model_id` to `nvidia/Cosmos3-Super`.
+`device_map="auto"` can shard the model across multiple GPUs when Accelerate is
+installed. Use [vLLM](#run-with-vllm) or [NIM](#run-with-nim) when you need an
+OpenAI-compatible server instead of local Python inference.

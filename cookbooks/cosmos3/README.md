@@ -8,7 +8,7 @@ backend you want to run and follow that one section.
 | --- | --- | --- |
 | [Cosmos Framework](#cosmos-framework) | Native PyTorch inference, launched with `torchrun` | Reasoner, Generator (Audiovisual, Action, **Transfer**) |
 | [Diffusers](#diffusers) | Direct generation with `Cosmos3OmniPipeline` | Generator (Audiovisual) |
-| [Transformers](#transformers-coming-soon) | Hugging Face Transformers inference | Reasoner |
+| [Transformers](#transformers) | Hugging Face Transformers inference | Reasoner |
 | [vLLM](#vllm) | OpenAI-compatible reasoning server (image/video understanding) | Reasoner |
 | [vLLM-Omni](#vllm-omni) | OpenAI-compatible generation server (image/video/audio/action) | Generator (Audiovisual, Action) |
 | [NIM](#nim) | Prebuilt OpenAI-compatible reasoning server (image/video understanding); no venv | Reasoner |
@@ -161,9 +161,37 @@ uv pip install --torch-backend=cu130 \
   transformers
 ```
 
-## Transformers (coming soon)
+## Transformers
 
-Support for Transformers-based Reasoner inference is coming soon.
+Local Python inference for the Cosmos3 Reasoner. This backend uses the
+Transformers Cosmos3 integration and loads only the Reasoner tower from the
+unified Cosmos3 checkpoint.
+
+Cosmos3 support first appears in the Transformers `v5.11.0` release tag. Create
+a venv and install Transformers `5.11.0` or newer:
+
+```bash
+uv venv --python 3.13 --seed --managed-python
+source .venv/bin/activate
+
+uv pip install --torch-backend=auto \
+  accelerate \
+  av \
+  pillow \
+  "safetensors>=0.8.0" \
+  torch \
+  torchvision \
+  "transformers>=5.11.0"
+```
+
+`--torch-backend=auto` lets uv detect the CUDA build of `torch`/`torchvision`
+that matches your NVIDIA driver. Pin a backend such as `cu128` or `cu130` if
+your environment needs an explicit CUDA wheel.
+
+Use `Cosmos3OmniForConditionalGeneration` with `AutoProcessor` and either
+`nvidia/Cosmos3-Nano` or `nvidia/Cosmos3-Super`. See the
+[Reasoner Transformers quickstart](reasoner/README.md#run-with-transformers)
+for a runnable image example and video input notes.
 
 ## vLLM
 
