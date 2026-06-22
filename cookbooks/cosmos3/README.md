@@ -238,7 +238,6 @@ notebook's `COSMOS3_MEDIA_ROOT`.
 ```bash
 CUDA_VISIBLE_DEVICES=0 \
 vllm serve nvidia/Cosmos3-Nano \
-  --hf-overrides '{"architectures": ["Cosmos3ForConditionalGeneration"]}' \
   --tensor-parallel-size 1 \
   --mm-encoder-tp-mode data \
   --async-scheduling \
@@ -255,7 +254,6 @@ export VLLM_PORT="${VLLM_PORT:-8001}"
 
 CUDA_VISIBLE_DEVICES=0,1,2,3 \
 vllm serve nvidia/Cosmos3-Super \
-  --hf-overrides '{"architectures": ["Cosmos3ForConditionalGeneration"]}' \
   --tensor-parallel-size 4 \
   --mm-encoder-tp-mode data \
   --async-scheduling \

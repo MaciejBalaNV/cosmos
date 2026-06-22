@@ -559,17 +559,13 @@ installed. For an OpenAI-compatible server, use
 ```shell
 uv venv --python 3.13 --seed --managed-python
 source .venv/bin/activate
-uv pip install --torch-backend=cu130 "vllm>=0.23.0"
+uv pip install --torch-backend=auto "vllm>=0.23.0"
 ```
 
-Native Cosmos3 Reasoner support first appears in the vLLM `v0.23.0` stable
-release. Pick a `--torch-backend` that matches your driver; CUDA 13 systems
-should use `cu130`, while CUDA 12.8 systems should use `cu128` if a compatible
-vLLM wheel is available for that release.
+Or use `vllm/vllm-openai:v0.23.0` docker image.
 
 ```shell
 vllm serve nvidia/Cosmos3-Nano \
-  --hf-overrides '{"architectures": ["Cosmos3ForConditionalGeneration"]}' \
   --async-scheduling \
   --allowed-local-media-path / \
   --port 8000
