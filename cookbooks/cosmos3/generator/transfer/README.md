@@ -106,7 +106,9 @@ for example `output/transfer_edge/vision.mp4`. Batch size must be 1 for transfer
 ### Quickstart
 
 Set up the environment and start the server:
-[vLLM-Omni setup](../../README.md#vllm-omni) (Docker recommended). Run the
+[vLLM-Omni setup](../../README.md#vllm-omni). Transfer controls require the
+native vLLM-Omni install from `main` until the `vllm/vllm-omni:v0.23.0` Docker
+image is released. If you use a released image with transfer, run the
 Docker command from the `cosmos` repo root so the repo is mounted at
 `/workspace` and the server runs from that directory inside the container:
 
@@ -127,8 +129,9 @@ If your server does not run from the repo root, start it from the repo root or
 adjust `control_path` to a path the server process can read.
 
 Transfer requests should also pass the spec `resolution` inside `extra_params`.
-The video API `size` field controls the output size string, but Cosmos3 transfer
-bucket selection reads `extra_params.resolution`.
+Cosmos3 transfer bucket selection reads `extra_params.resolution` and the
+control/input aspect ratio; set the video API `size` field to the matching
+`<width>x<height>` value for a consistent request.
 
 Send a depth-transfer request:
 

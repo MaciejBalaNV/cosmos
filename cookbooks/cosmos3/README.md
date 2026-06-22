@@ -258,8 +258,9 @@ Cosmos3 checkpoints can exceed the default server init timeout — always pass
 
 ### Option 1: Docker (recommended)
 
-The prebuilt image `vllm/vllm-omni:cosmos3` supports every Generator modality
-(including video-to-video, transfer controls, and action). Pull once:
+The prebuilt image `vllm/vllm-omni:cosmos3` supports the released Generator
+modalities. Transfer controls require the native vLLM-Omni install from `main`
+until the `vllm/vllm-omni:v0.23.0` Docker image is released. Pull once:
 
 ```bash
 docker pull vllm/vllm-omni:cosmos3
