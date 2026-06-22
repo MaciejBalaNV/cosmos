@@ -559,15 +559,17 @@ installed. For an OpenAI-compatible server, use
 ```shell
 uv venv --python 3.13 --seed --managed-python
 source .venv/bin/activate
-uv pip install --torch-backend=cu130 "vllm==0.21.0" \
-  "vllm-cosmos3 @ git+https://github.com/NVIDIA/cosmos-framework.git#subdirectory=packages/vllm-cosmos3"
+uv pip install --torch-backend=cu130 "vllm>=0.23.0"
 ```
 
-The vLLM version and the torch backend are paired: use `--torch-backend=cu130 "vllm==0.21.0"` for a CUDA 13 driver, or `--torch-backend=cu128 "vllm==0.19.1"` for CUDA 12.8. vLLM does not publish wheels for every CUDA minor version, so `--torch-backend=auto` is not reliable here — pick the pair that matches your driver.
+Native Cosmos3 Reasoner support first appears in the vLLM `v0.23.0` stable
+release. Pick a `--torch-backend` that matches your driver; CUDA 13 systems
+should use `cu130`, while CUDA 12.8 systems should use `cu128` if a compatible
+vLLM wheel is available for that release.
 
 ```shell
 vllm serve nvidia/Cosmos3-Nano \
-  --hf-overrides '{"architectures": ["Cosmos3ReasonerForConditionalGeneration"]}' \
+  --hf-overrides '{"architectures": ["Cosmos3ForConditionalGeneration"]}' \
   --async-scheduling \
   --allowed-local-media-path / \
   --port 8000
@@ -710,7 +712,7 @@ NVIDIA NGC PyTorch: `nvcr.io/nvidia/pytorch:25.09-py3` for CUDA 13, or `nvcr.io/
 
 #### `torch.cuda.is_available()` is `False` ("The NVIDIA driver on your system is too old")
 
-The installed `torch` is newer CUDA than your driver — `uv pip install torch` defaults to CUDA 13 (`cu130`). Install a matching build: `uv pip install --torch-backend=auto torch torchvision` (or pin, e.g. `--torch-backend=cu128`). For `uv sync` notebooks use `COSMOS3_UV_GROUP=cu128-train`; for vLLM pair `cu128` with `vllm==0.19.1`.
+The installed `torch` is newer CUDA than your driver — `uv pip install torch` defaults to CUDA 13 (`cu130`). Install a matching build: `uv pip install --torch-backend=auto torch torchvision` (or pin, e.g. `--torch-backend=cu128`). For `uv sync` notebooks use `COSMOS3_UV_GROUP=cu128-train`; for vLLM, use a vLLM `0.23.0` or newer wheel that matches your CUDA backend.
 
 #### Import fails with `libxcb.so.1: cannot open shared object file`
 
