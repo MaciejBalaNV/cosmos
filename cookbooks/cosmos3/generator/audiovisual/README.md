@@ -216,6 +216,7 @@ response = requests.post(
         "fps": 24,
         "num_inference_steps": 35,
         "guidance_scale": 6.0,
+        "max_sequence_length": 2048,
         "seed": 0,
         "extra_params": {
             "use_resolution_template": False,
@@ -234,9 +235,8 @@ For image-to-video, post multipart form data to the same endpoint with the
 reference image under `input_reference`. TensorRT-LLM Cosmos3 audio/action
 generation is not covered by this backend section.
 
-For text-to-image, use the same video generation endpoint with `seconds=1 / 24`
-and `fps=24`; TensorRT-LLM Cosmos3 returns a one-frame video response for this
-path.
+For text-to-image, use the same video generation endpoint with `seconds=1` and
+`fps=1`; TensorRT-LLM Cosmos3 returns a one-frame video response for this path.
 
 The TRT-LLM notebook always sends model-specific `extra_params`, so use a
 TensorRT-LLM release with the Cosmos3 VisualGen API schema. The latest release
