@@ -13,9 +13,9 @@ Generator requires the Guardrail. Request access to the gated
 [nvidia/Cosmos-1.0-Guardrail](https://huggingface.co/nvidia/Cosmos-1.0-Guardrail)
 HF repository before running these examples. To disable the guardrail, set
 `enable_safety_checker=False` (Diffusers), `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1`
-(TensorRT-LLM; newer builds also support `use_guardrails: false` through
-`extra_params`), `guardrails: false` (vLLM-Omni `extra_params`/`extra_args`),
-or `--no-guardrails` (Cosmos Framework).
+or `use_guardrails: false` through `extra_params` (TensorRT-LLM),
+`guardrails: false` (vLLM-Omni `extra_params`/`extra_args`), or
+`--no-guardrails` (Cosmos Framework).
 
 ## Run with Cosmos Framework
 
@@ -217,6 +217,12 @@ response = requests.post(
         "num_inference_steps": 35,
         "guidance_scale": 6.0,
         "seed": 0,
+        "extra_params": {
+            "use_resolution_template": False,
+            "use_duration_template": False,
+            "use_system_prompt": False,
+            "use_guardrails": True,
+        },
     },
 )
 response.raise_for_status()
@@ -228,14 +234,19 @@ For image-to-video, post multipart form data to the same endpoint with the
 reference image under `input_reference`. TensorRT-LLM Cosmos3 audio/action
 generation is not covered by this backend section.
 
-Some TensorRT-LLM builds also accept model-specific `extra_params` such as
-`use_resolution_template`, `use_duration_template`, `use_system_prompt`, and
-`use_guardrails`. The notebook leaves these off by default for compatibility.
+For text-to-image, use the same video generation endpoint with `seconds=1 / 24`
+and `fps=24`; TensorRT-LLM Cosmos3 returns a one-frame video response for this
+path.
+
+The TRT-LLM notebook always sends model-specific `extra_params`, so use a
+TensorRT-LLM release with the Cosmos3 VisualGen API schema. The latest release
+container is available at `nvcr.io/nvidia/tensorrt-llm/release:latest`.
 
 ### Notebook walkthrough
 
 [`run_with_trt_llm.ipynb`](./run_with_trt_llm.ipynb) is the full tutorial for the
-TensorRT-LLM backend: it walks through text-to-video and image-to-video requests
-against an already-running VisualGen server. Server launch options (Nano and
-Super, FP8 dynamic quantization, CFG parallelism, Ulysses, and parallel VAE)
-live in the [shared environment setup guide](../../README.md#tensorrt-llm).
+TensorRT-LLM backend: it walks through text-to-image, text-to-video, and
+image-to-video requests against an already-running VisualGen server. Server
+launch options (Nano and Super, FP8 dynamic quantization, CFG parallelism,
+Ulysses, and parallel VAE) live in the
+[shared environment setup guide](../../README.md#tensorrt-llm).

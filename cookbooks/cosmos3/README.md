@@ -30,10 +30,9 @@ backend you want to run and follow that one section.
   ```
 
   To disable the guardrail, set `enable_safety_checker=False` (Diffusers),
-  `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1` (TensorRT-LLM; newer builds also
-  support `use_guardrails: false` through `extra_params`), `guardrails: false`
-  (vLLM-Omni `extra_params`/`extra_args`), or `--no-guardrails` (Cosmos
-  Framework).
+  `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1` or `use_guardrails: false` through
+  `extra_params` (TensorRT-LLM), `guardrails: false` (vLLM-Omni
+  `extra_params`/`extra_args`), or `--no-guardrails` (Cosmos Framework).
 - For the Cosmos Framework backend: access to `git@github.com:NVIDIA/cosmos-framework.git`.
 - For the NIM backend: an NGC API key (used as `NGC_API_KEY`), which you can generate on [build.nvidia.com](https://build.nvidia.com/nvidia/cosmos3-nano-reasoner) or [NGC](https://catalog.ngc.nvidia.com/orgs/nim/teams/nvidia/containers/cosmos3-reasoner), plus a one-time `docker login nvcr.io` (username `$oauthtoken`, password = your key). The HF login above is not needed for NIM.
 - Enough local disk for the venv/image, the uv cache, and the model cache. Nano
@@ -166,14 +165,20 @@ uv pip install --torch-backend=cu130 \
 
 ## TensorRT-LLM
 
-OpenAI-compatible **VisualGen** server for Generator audiovisual text-to-video
-and image-to-video examples. Cosmos3 support was added in TensorRT-LLM PR
+OpenAI-compatible **VisualGen** server for Generator audiovisual text-to-image,
+text-to-video, and image-to-video examples. Cosmos3 support was added in TensorRT-LLM PR
 [#14824](https://github.com/NVIDIA/TensorRT-LLM/pull/14824); use a
 TensorRT-LLM checkout or package that includes that change.
 
-Install TensorRT-LLM following its upstream documentation, then install the
-Cosmos3 guardrail package in the same environment unless you explicitly disable
-guardrails before starting the server:
+Install TensorRT-LLM following its upstream documentation, or run the latest
+release container instead of installing it manually:
+
+```bash
+docker pull nvcr.io/nvidia/tensorrt-llm/release:latest
+```
+
+Then install the Cosmos3 guardrail package in the same environment unless you
+explicitly disable guardrails before starting the server:
 
 ```bash
 pip install cosmos_guardrail==0.3.0
@@ -207,8 +212,10 @@ torchrun --nproc_per_node=4 -m tensorrt_llm.commands.serve \
 
 The server exposes `/health`, `/v1/videos/generations`, `/v1/videos`, and
 `/v1/images/generations`. The audiovisual notebook uses the validated video
-generation endpoint for text-to-video and image-to-video and leaves the output
-format at the server default for compatibility across TensorRT-LLM builds.
+generation endpoint for text-to-image, text-to-video, and image-to-video. Cosmos3
+text-to-image is sent as a one-frame video request, matching the TensorRT-LLM
+Cosmos3 pipeline. Requests send Cosmos3 controls through `extra_params`, so use a
+TensorRT-LLM build that includes the Cosmos3 VisualGen API schema.
 
 ## Transformers
 
