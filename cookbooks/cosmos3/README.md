@@ -214,13 +214,12 @@ The server exposes `/health`, `/v1/videos/generations`, `/v1/videos`, and
 `/v1/images/generations`. The audiovisual notebook uses the validated video
 generation endpoint for text-to-image, text-to-video, and image-to-video. Cosmos3
 text-to-image is sent as a one-frame video request, matching the TensorRT-LLM
-Cosmos3 pipeline; the notebook sends it as `seconds=1` and `fps=1` to satisfy
-the video request schema. Requests send Cosmos3 controls through `extra_params`,
+Cosmos3 pipeline; the notebook sends it as `num_frames=1`, `seconds=1`, and
+`fps=8` to satisfy the video request schema while preserving a single generated
+frame. Requests send Cosmos3 controls through `extra_params`,
 so use a TensorRT-LLM build that includes the Cosmos3 VisualGen API schema. The
 latest release container is available at
 `nvcr.io/nvidia/tensorrt-llm/release:latest`.
-The notebook sets request-level `max_sequence_length=2048` for longer structured
-JSON prompts.
 
 ## Transformers
 
