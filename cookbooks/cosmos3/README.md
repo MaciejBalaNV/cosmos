@@ -30,9 +30,10 @@ backend you want to run and follow that one section.
   ```
 
   To disable the guardrail, set `enable_safety_checker=False` (Diffusers),
-  `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1` or `use_guardrails: false`
-  (TensorRT-LLM), `guardrails: false` (vLLM-Omni
-  `extra_params`/`extra_args`), or `--no-guardrails` (Cosmos Framework).
+  `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1` (TensorRT-LLM; newer builds also
+  support `use_guardrails: false` through `extra_params`), `guardrails: false`
+  (vLLM-Omni `extra_params`/`extra_args`), or `--no-guardrails` (Cosmos
+  Framework).
 - For the Cosmos Framework backend: access to `git@github.com:NVIDIA/cosmos-framework.git`.
 - For the NIM backend: an NGC API key (used as `NGC_API_KEY`), which you can generate on [build.nvidia.com](https://build.nvidia.com/nvidia/cosmos3-nano-reasoner) or [NGC](https://catalog.ngc.nvidia.com/orgs/nim/teams/nvidia/containers/cosmos3-reasoner), plus a one-time `docker login nvcr.io` (username `$oauthtoken`, password = your key). The HF login above is not needed for NIM.
 - Enough local disk for the venv/image, the uv cache, and the model cache. Nano
@@ -206,8 +207,8 @@ torchrun --nproc_per_node=4 -m tensorrt_llm.commands.serve \
 
 The server exposes `/health`, `/v1/videos/generations`, `/v1/videos`, and
 `/v1/images/generations`. The audiovisual notebook uses the validated video
-generation endpoint for text-to-video and image-to-video. If `ffmpeg` is
-available, `format="auto"` returns MP4; otherwise TensorRT-LLM falls back to AVI.
+generation endpoint for text-to-video and image-to-video and leaves the output
+format at the server default for compatibility across TensorRT-LLM builds.
 
 ## Transformers
 

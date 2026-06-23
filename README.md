@@ -209,9 +209,9 @@ Set `HF_HOME` if you want to use a shared cache or a disk with more space.
 Generator requires the Guardrail. Request access to the gated
 [nvidia/Cosmos-1.0-Guardrail](https://huggingface.co/nvidia/Cosmos-1.0-Guardrail)
 HF repository. To disable the guardrail, set `enable_safety_checker=False` (Diffusers),
-`TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1` or `use_guardrails: false`
-(TensorRT-LLM), `guardrails: false` (vLLM-Omni `extra_params`/`extra_args`), or
-`--no-guardrails` (Cosmos Framework).
+`TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1` (TensorRT-LLM; newer builds also support
+`use_guardrails: false` through `extra_params`), `guardrails: false` (vLLM-Omni
+`extra_params`/`extra_args`), or `--no-guardrails` (Cosmos Framework).
 
 #### Generator with Diffusers
 

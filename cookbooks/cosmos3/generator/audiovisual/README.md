@@ -13,8 +13,9 @@ Generator requires the Guardrail. Request access to the gated
 [nvidia/Cosmos-1.0-Guardrail](https://huggingface.co/nvidia/Cosmos-1.0-Guardrail)
 HF repository before running these examples. To disable the guardrail, set
 `enable_safety_checker=False` (Diffusers), `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1`
-or `use_guardrails: false` (TensorRT-LLM), `guardrails: false` (vLLM-Omni
-`extra_params`/`extra_args`), or `--no-guardrails` (Cosmos Framework).
+(TensorRT-LLM; newer builds also support `use_guardrails: false` through
+`extra_params`), `guardrails: false` (vLLM-Omni `extra_params`/`extra_args`),
+or `--no-guardrails` (Cosmos Framework).
 
 ## Run with Cosmos Framework
 
@@ -211,18 +212,11 @@ response = requests.post(
         "prompt": json.dumps(prompt, ensure_ascii=True, separators=(",", ":")),
         "negative_prompt": json.dumps(negative, ensure_ascii=True, separators=(",", ":")),
         "size": "1280x720",
-        "num_frames": 189,
+        "seconds": 189 / 24,
         "fps": 24,
         "num_inference_steps": 35,
         "guidance_scale": 6.0,
         "seed": 0,
-        "format": "auto",
-        "extra_params": {
-            "use_resolution_template": False,
-            "use_duration_template": False,
-            "use_system_prompt": False,
-            "use_guardrails": True,
-        },
     },
 )
 response.raise_for_status()
@@ -233,6 +227,10 @@ Path(f"/tmp/cosmos3_t2v_trtllm{suffix}").write_bytes(response.content)
 For image-to-video, post multipart form data to the same endpoint with the
 reference image under `input_reference`. TensorRT-LLM Cosmos3 audio/action
 generation is not covered by this backend section.
+
+Some TensorRT-LLM builds also accept model-specific `extra_params` such as
+`use_resolution_template`, `use_duration_template`, `use_system_prompt`, and
+`use_guardrails`. The notebook leaves these off by default for compatibility.
 
 ### Notebook walkthrough
 
