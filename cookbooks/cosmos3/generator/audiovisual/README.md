@@ -1,7 +1,7 @@
 # Cosmos3 Generator Audiovisual Examples
 
 Generate images and video (with optional audio) from text or image prompts with
-`Cosmos3-Nano` and `Cosmos3-Super`, across three inference backends. Sample
+`Cosmos3-Nano` and `Cosmos3-Super`, across four inference backends. Sample
 prompts live under [`assets/`](./assets).
 
 Environment setup for every backend is centralized in the shared
@@ -12,7 +12,8 @@ to get one generation running per backend — run them from this folder.
 Generator requires the Guardrail. Request access to the gated
 [nvidia/Cosmos-1.0-Guardrail](https://huggingface.co/nvidia/Cosmos-1.0-Guardrail)
 HF repository before running these examples. To disable the guardrail, set
-`enable_safety_checker=False` (Diffusers), `guardrails: false` (vLLM-Omni
+`enable_safety_checker=False` (Diffusers), `TRTLLM_DISABLE_COSMOS3_GUARDRAILS=1`
+or `use_guardrails: false` (TensorRT-LLM), `guardrails: false` (vLLM-Omni
 `extra_params`/`extra_args`), or `--no-guardrails` (Cosmos Framework).
 
 ## Run with Cosmos Framework
@@ -184,3 +185,59 @@ the vLLM-Omni backend: it walks through text-to-image, text-to-video, and
 image-to-video requests with audio on or off. Server launch options (Nano and
 Super, tensor parallelism, layerwise offload, and CFG-parallel variants) live in
 the [shared environment setup guide](../../README.md#vllm-omni).
+
+## Run with TensorRT-LLM
+
+### Quickstart
+
+Set up the environment and start the server:
+[TensorRT-LLM setup](../../README.md#tensorrt-llm). The notebook targets the
+OpenAI-compatible VisualGen API served by `trtllm-serve`.
+
+Send a text-to-video request with the synchronous video API:
+
+```python
+import json
+from pathlib import Path
+
+import requests
+
+prompt = json.load(open("assets/prompts/text2video/robot_kitchen.json"))
+negative = json.load(open("assets/negative_prompts/text2video/neg_prompt.json"))
+
+response = requests.post(
+    "http://localhost:8000/v1/videos/generations",
+    json={
+        "prompt": json.dumps(prompt, ensure_ascii=True, separators=(",", ":")),
+        "negative_prompt": json.dumps(negative, ensure_ascii=True, separators=(",", ":")),
+        "size": "1280x720",
+        "num_frames": 189,
+        "fps": 24,
+        "num_inference_steps": 35,
+        "guidance_scale": 6.0,
+        "seed": 0,
+        "format": "auto",
+        "extra_params": {
+            "use_resolution_template": False,
+            "use_duration_template": False,
+            "use_system_prompt": False,
+            "use_guardrails": True,
+        },
+    },
+)
+response.raise_for_status()
+suffix = ".avi" if "x-msvideo" in response.headers.get("content-type", "") else ".mp4"
+Path(f"/tmp/cosmos3_t2v_trtllm{suffix}").write_bytes(response.content)
+```
+
+For image-to-video, post multipart form data to the same endpoint with the
+reference image under `input_reference`. TensorRT-LLM Cosmos3 audio/action
+generation is not covered by this backend section.
+
+### Notebook walkthrough
+
+[`run_with_trt_llm.ipynb`](./run_with_trt_llm.ipynb) is the full tutorial for the
+TensorRT-LLM backend: it walks through text-to-video and image-to-video requests
+against an already-running VisualGen server. Server launch options (Nano and
+Super, FP8 dynamic quantization, CFG parallelism, Ulysses, and parallel VAE)
+live in the [shared environment setup guide](../../README.md#tensorrt-llm).
