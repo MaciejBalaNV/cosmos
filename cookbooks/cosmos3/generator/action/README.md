@@ -115,10 +115,9 @@ generation (see [`run_fd_with_vllm.ipynb`](./run_fd_with_vllm.ipynb) and
 | `flow_shift` | `10.0` |
 
 The notebooks build the full request body for AV, DROID, and UMI examples,
-including autoregressive chunked generation for the robotics examples.
-Policy inference can either use async `POST /v1/videos` to retrieve a rollout
-video plus top-level `action` metadata, or the OpenPI websocket endpoint for
-action chunks consumed by robot clients.
+including autoregressive chunked generation for the robotics examples. Policy
+inference uses async `POST /v1/videos` to retrieve a rollout video plus
+top-level `action` metadata.
 
 ### VLLM-Omni Notebook Walkthrough
 
@@ -130,7 +129,7 @@ write outputs under `outputs/cosmos3_action_vllm/`:
 - [`run_id_with_vllm.ipynb`](./run_id_with_vllm.ipynb) — inverse dynamics,
   predicting ego-motion trajectories from input AV videos.
 - [`run_policy_with_vllm.ipynb`](./run_policy_with_vllm.ipynb) — policy
-  inference for DROID through the async video API and OpenPI websocket endpoint.
+  inference for DROID through the async video API.
 
 
 
