@@ -217,6 +217,7 @@ response = requests.post(
         "num_frames": 189,
         "num_inference_steps": 35,
         "guidance_scale": 6.0,
+        "max_sequence_length": 2048,
         "seed": 0,
         "extra_params": {
             "use_resolution_template": False,
@@ -241,8 +242,8 @@ response for this path. `num_frames` is passed explicitly so the server does not
 derive an eight-frame clip from `seconds * fps`.
 
 The TRT-LLM notebook always sends model-specific `extra_params`, so use a
-TensorRT-LLM release with the Cosmos3 VisualGen API schema. The latest release
-container is available at `nvcr.io/nvidia/tensorrt-llm/release:latest`.
+TensorRT-LLM release with the Cosmos3 VisualGen API schema. The notebook sets
+request-level `max_sequence_length=2048` for longer structured JSON prompts.
 
 ### Notebook walkthrough
 

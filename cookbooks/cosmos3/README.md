@@ -170,12 +170,41 @@ text-to-video, and image-to-video examples. Cosmos3 support was added in TensorR
 [#14824](https://github.com/NVIDIA/TensorRT-LLM/pull/14824); use a
 TensorRT-LLM checkout or package that includes that change.
 
-Install TensorRT-LLM following its upstream documentation, or run the latest
-release container instead of installing it manually:
+Install TensorRT-LLM following its upstream documentation.
+
+To build TensorRT-LLM from source, follow NVIDIA's
+[Build from Source](https://nvidia.github.io/TensorRT-LLM/installation/build-from-source.html)
+guide. This is the right path when you need a checkout that contains a recent
+Cosmos3 VisualGen change before it is available in your installed package or
+release image.
 
 ```bash
-docker pull nvcr.io/nvidia/tensorrt-llm/release:latest
+apt-get update && apt-get -y install git git-lfs
+git lfs install
+
+git clone https://github.com/NVIDIA/TensorRT-LLM.git
+cd TensorRT-LLM
+git submodule update --init --recursive
+git lfs pull
+
+# Pick a devel tag from the upstream build-from-source guide or NGC.
+docker pull nvcr.io/nvidia/tensorrt-llm/devel:<tag>
+docker run --rm -it \
+  --ipc=host \
+  --ulimit memlock=-1 --ulimit stack=67108864 \
+  --gpus=all \
+  --volume "$PWD":"$PWD" \
+  --workdir "$PWD" \
+  nvcr.io/nvidia/tensorrt-llm/devel:<tag>
+
+# Inside the container:
+python3 scripts/build_wheel.py --use_ccache --skip_building_wheel --linking_install_binary
+pip install -e .
 ```
+
+For Python-only changes, the upstream guide also documents
+`TRTLLM_USE_PRECOMPILED=1 pip install -e .` to reuse precompiled binaries while
+installing the checkout in editable mode.
 
 Then install the Cosmos3 guardrail package in the same environment unless you
 explicitly disable guardrails before starting the server:
@@ -217,9 +246,9 @@ text-to-image is sent as a one-frame video request, matching the TensorRT-LLM
 Cosmos3 pipeline; the notebook sends it as `num_frames=1`, `seconds=1`, and
 `fps=8` to satisfy the video request schema while preserving a single generated
 frame. Requests send Cosmos3 controls through `extra_params`,
-so use a TensorRT-LLM build that includes the Cosmos3 VisualGen API schema. The
-latest release container is available at
-`nvcr.io/nvidia/tensorrt-llm/release:latest`.
+so use a TensorRT-LLM build that includes the Cosmos3 VisualGen API schema.
+The notebook sets request-level `max_sequence_length=2048` for longer structured
+JSON prompts.
 
 ## Transformers
 
