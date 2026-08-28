@@ -16,6 +16,7 @@ import json
 import os
 import subprocess
 import time
+from math import gcd
 from pathlib import Path
 from typing import Any
 
@@ -26,15 +27,6 @@ from PIL import Image
 
 
 DEFAULT_PROMPT = "Pick up the object and place it in the target container."
-ACTION_VIDEO_RES_SIZE_INFO = {
-    "480": {
-        "1,1": (640, 640),
-        "4,3": (736, 544),
-        "3,4": (544, 736),
-        "16,9": (832, 480),
-        "9,16": (480, 832),
-    }
-}
 CAMERA_VIDEO_RELATIVE_PATHS = {
     "observation/wrist_image_left": (
         "videos/observation.image.wrist_image_left/chunk-000/file-000.mp4"
@@ -233,14 +225,6 @@ def wait_for_server(
     ) from last_error
 
 
-def closest_action_size(height: int, width: int) -> tuple[int, int]:
-    input_ratio = height / width
-    return min(
-        ACTION_VIDEO_RES_SIZE_INFO["480"].values(),
-        key=lambda size: abs(input_ratio - size[1] / size[0]),
-    )
-
-
 def make_edge_policy_prompt(
     instruction: str,
     width: int,
@@ -248,11 +232,8 @@ def make_edge_policy_prompt(
     num_frames: int,
     fps: int,
 ) -> str:
-    aspect_ratio = next(
-        ratio
-        for ratio, size in ACTION_VIDEO_RES_SIZE_INFO["480"].items()
-        if size == (width, height)
-    )
+    ratio_divisor = gcd(width, height)
+    aspect_ratio = f"{width // ratio_divisor},{height // ratio_divisor}"
     duration_seconds = num_frames / fps
     prompt = {
         "cinematography": {
@@ -299,7 +280,7 @@ def submit_policy_video(
         policy_image.save(request_image_path)
         input_width, input_height = policy_image.size
 
-    target_width, target_height = closest_action_size(input_height, input_width)
+    target_width, target_height = input_width, input_height
     num_frames = action_chunk_size + 1
     request_prompt = (
         make_edge_policy_prompt(prompt, target_width, target_height, num_frames, 15)
@@ -311,7 +292,7 @@ def submit_policy_video(
         "domain_name": "droid_lerobot",
         "raw_action_dim": 8,
         "action_chunk_size": action_chunk_size,
-        "image_size": 480,
+        "image_size": min(target_width, target_height),
         "guardrails": False,
     }
     form: dict[str, Any] = {
