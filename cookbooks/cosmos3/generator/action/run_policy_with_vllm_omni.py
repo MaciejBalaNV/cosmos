@@ -90,6 +90,24 @@ def parse_args() -> argparse.Namespace:
         default=os.environ.get("COSMOS3_POLICY_PROMPT", DEFAULT_PROMPT),
         help="Robot instruction (default: %(default)s)",
     )
+    parser.add_argument(
+        "--input-width",
+        type=int,
+        default=320,
+        help="Width of the composed conditioning image (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--input-height",
+        type=int,
+        default=192,
+        help="Height of the composed conditioning image (default: %(default)s)",
+    )
+    parser.add_argument(
+        "--action-chunk-size",
+        type=int,
+        default=32,
+        help="Number of predicted actions; rollout uses one additional frame (default: %(default)s)",
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--num-inference-steps", type=int, default=30)
     parser.add_argument("--server-timeout", type=float, default=600)
@@ -124,7 +142,11 @@ def extract_first_frame(video_path: Path, output_path: Path) -> Path:
     return output_path
 
 
-def prepare_policy_image(asset_root: Path, input_dir: Path) -> Path:
+def prepare_policy_image(
+    asset_root: Path,
+    input_dir: Path,
+    input_size: tuple[int, int],
+) -> Path:
     """Compose wrist and exterior camera frames in the policy layout."""
     video_paths = {
         key: asset_root / relative_path
@@ -158,21 +180,26 @@ def prepare_policy_image(asset_root: Path, input_dir: Path) -> Path:
         right = frames["observation/exterior_image_2_left"].resize(
             (half_width, bottom_height), Image.Resampling.BILINEAR
         )
+        policy_image = Image.new("RGB", (wrist.width, wrist.height + bottom_height))
         try:
-            policy_image = Image.new("RGB", (wrist.width, wrist.height + bottom_height))
             policy_image.paste(wrist, (0, 0))
             policy_image.paste(left, (0, wrist.height))
             policy_image.paste(right, (half_width, wrist.height))
             output_path = input_dir / "droid_policy_first_frame.png"
-            policy_image.save(output_path)
+            resized_policy_image = policy_image.resize(input_size, Image.Resampling.BILINEAR)
+            try:
+                resized_policy_image.save(output_path)
+            finally:
+                resized_policy_image.close()
         finally:
+            policy_image.close()
             left.close()
             right.close()
     finally:
         for frame in frames.values():
             frame.close()
 
-    print(f"Saved conditioning image: {output_path}")
+    print(f"Saved conditioning image: {output_path} ({input_size[0]}x{input_size[1]})")
     return output_path
 
 
@@ -261,6 +288,7 @@ def submit_policy_video(
     run_dir: Path,
     seed: int,
     num_inference_steps: int,
+    action_chunk_size: int,
     job_timeout_s: float,
     poll_interval_s: float,
 ) -> dict[str, Any]:
@@ -272,8 +300,9 @@ def submit_policy_video(
         input_width, input_height = policy_image.size
 
     target_width, target_height = closest_action_size(input_height, input_width)
+    num_frames = action_chunk_size + 1
     request_prompt = (
-        make_edge_policy_prompt(prompt, target_width, target_height, 17, 15)
+        make_edge_policy_prompt(prompt, target_width, target_height, num_frames, 15)
         if "Cosmos3-Edge-Policy-DROID" in active_model
         else prompt
     )
@@ -281,13 +310,13 @@ def submit_policy_video(
         "action_mode": "policy",
         "domain_name": "droid_lerobot",
         "raw_action_dim": 8,
-        "action_chunk_size": 16,
+        "action_chunk_size": action_chunk_size,
         "image_size": 480,
         "guardrails": False,
     }
     form: dict[str, Any] = {
         "prompt": request_prompt,
-        "num_frames": 17,
+        "num_frames": num_frames,
         "fps": 15,
         "size": f"{target_width}x{target_height}",
         "num_inference_steps": num_inference_steps,
@@ -337,8 +366,12 @@ def submit_policy_video(
             "vLLM response did not include action data: " + json.dumps(final, indent=2)
         )
     action_array = np.asarray(action["data"], dtype=np.float32)
-    if action_array.shape != (16, 8):
-        raise RuntimeError(f"Expected a [16, 8] DROID action chunk, got {action_array.shape}")
+    expected_action_shape = (action_chunk_size, 8)
+    if action_array.shape != expected_action_shape:
+        raise RuntimeError(
+            f"Expected a {list(expected_action_shape)} DROID action chunk, "
+            f"got {action_array.shape}"
+        )
     if not np.isfinite(action_array).all():
         raise RuntimeError("DROID action response contains non-finite values")
 
@@ -379,7 +412,16 @@ def main() -> None:
     print(f"Output directory: {run_dir}")
     print(f"Policy prompt: {args.prompt}")
 
-    policy_image_path = prepare_policy_image(asset_root, input_dir)
+    if args.input_width <= 0 or args.input_height <= 0:
+        raise ValueError("Input width and height must be positive")
+    if args.action_chunk_size <= 0:
+        raise ValueError("Action chunk size must be positive")
+
+    policy_image_path = prepare_policy_image(
+        asset_root,
+        input_dir,
+        input_size=(args.input_width, args.input_height),
+    )
     active_model = wait_for_server(
         base_url,
         timeout_s=args.server_timeout,
@@ -395,6 +437,7 @@ def main() -> None:
         run_dir=run_dir,
         seed=args.seed,
         num_inference_steps=args.num_inference_steps,
+        action_chunk_size=args.action_chunk_size,
         job_timeout_s=args.job_timeout,
         poll_interval_s=args.poll_interval,
     )
